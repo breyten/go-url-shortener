@@ -5,6 +5,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"fmt"
 	"log"
 	"math/rand"
 	"net/http"
@@ -108,8 +109,32 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	var url string
 	err := db.QueryRow("SELECT `url` FROM `redirect` WHERE `slug` = ?", slug).Scan(&url)
 	if err != nil {
-		http.NotFound(w, r)
-		return
+		// 2a. Check for a fallback url. This is a string for formatting
+    //     This can be something like: http://bit.ly/%s
+		if !viper.IsSet("fallback_url") {
+			http.NotFound(w, r)
+			return
+		} else {
+			req, err := http.NewRequest("GET", fmt.Sprintf(viper.GetString("fallback_url"), slug), nil)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			resp, resp_err := http.DefaultTransport.RoundTrip(req)
+			if resp_err != nil {
+				http.Error(w, resp_err.Error(), http.StatusInternalServerError)
+				return
+			}
+
+			url, loc_err := resp.Location()
+			if loc_err != nil {
+				http.Error(w, loc_err.Error(), http.StatusInternalServerError)
+				return
+			}
+			http.Redirect(w, r, url.String(), http.StatusMovedPermanently)
+			return // for now ...
+    }
 	}
 
 	// 3. If the slug (and thus the URL) exist, update the hit counter
