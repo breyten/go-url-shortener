@@ -111,6 +111,7 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		// 2a. Check for a fallback url. This is a string for formatting
     //     This can be something like: http://bit.ly/%s
+		//     But if there is no fallback we will return a not found error
 		if !viper.IsSet("fallback_url") {
 			http.NotFound(w, r)
 			return
@@ -126,6 +127,8 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, resp_err.Error(), http.StatusInternalServerError)
 				return
 			}
+
+			defer resp.Body.Close()
 
 			url, loc_err := resp.Location()
 			if loc_err != nil {
