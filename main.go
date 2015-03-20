@@ -37,7 +37,13 @@ func main() {
 
 	// Assign mux as the HTTP handler
 	http.Handle("/", r)
-	http.ListenAndServe(":8080", nil)
+
+	http_address := viper.GetString("http_address")
+	if http_address == "" {
+		http_address = ":8080" // this is the default address
+	}
+
+	http.ListenAndServe(http_address, nil)
 }
 
 // Creates a redirect in the database table
