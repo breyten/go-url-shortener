@@ -80,6 +80,17 @@ func CreateRedirect(slug string, url string, hits int) (error) {
 	return err
 }
 
+// Generates a slug for a given URL
+func GenerateSlug(url string) (string, error) {
+	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
+	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
+	s := make([]rune, 6)
+	for i := range s {
+		s[i] = chars[rand.Intn(len(chars))]
+	}
+
+	return string(s), nil
+}
 
 // Shortens a given URL passed through in the request.
 // If the URL has already been shortened, returns the existing URL.
@@ -109,14 +120,11 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// It doesn't exist! Generate a new slug for it
-	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
-	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
-	s := make([]rune, 6)
-	for i := range s {
-		s[i] = chars[rand.Intn(len(chars))]
+	slug, err = GenerateSlug(url)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
 	}
-
-	slug = string(s)
 
 	// Insert it into the database
 	err = CreateRedirect(slug, url, 0)
