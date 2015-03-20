@@ -40,6 +40,19 @@ func main() {
 	http.ListenAndServe(":8080", nil)
 }
 
+// Creates a redirect in the database table
+func CreateRedirect(slug string, url string, hits int) (error) {
+	// Insert it into the database
+	stmt, err := db.Prepare("INSERT INTO `redirect` (`slug`, `url`, `date`, `hits`) VALUES (?, ?, NOW(), ?)")
+	if err != nil {
+		return err
+	}
+
+	_, err = stmt.Exec(slug, url, hits)
+	return err
+}
+
+
 // Shortens a given URL passed through in the request.
 // If the URL has already been shortened, returns the existing URL.
 // Writes the short URL in plain text to w.
@@ -78,13 +91,7 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	slug = string(s)
 
 	// Insert it into the database
-	stmt, err := db.Prepare("INSERT INTO `redirect` (`slug`, `url`, `date`, `hits`) VALUES (?, ?, NOW(), ?)")
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
-	_, err = stmt.Exec(slug, url, 0)
+	err = CreateRedirect(slug, url, 0)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -130,13 +137,18 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 
 			defer resp.Body.Close()
 
-			url, loc_err := resp.Location()
+			url_obj, loc_err := resp.Location()
 			if loc_err != nil {
 				http.Error(w, loc_err.Error(), http.StatusInternalServerError)
 				return
 			}
-			http.Redirect(w, r, url.String(), http.StatusMovedPermanently)
-			return // for now ...
+			url = url_obj.String()
+			// Insert it into the database
+			err = CreateRedirect(slug, url, 0)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
     }
 	}
 
