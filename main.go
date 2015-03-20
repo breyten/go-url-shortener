@@ -46,6 +46,28 @@ func main() {
 	http.ListenAndServe(http_address, nil)
 }
 
+// Get the redirect location for a given short url (Ie. 301 or 302 status)
+func GetRedirectLocation(short_url string) (error, string) {
+	req, err := http.NewRequest("GET", short_url, nil)
+	if err != nil {
+		return err, ""
+	}
+
+	resp, resp_err := http.DefaultTransport.RoundTrip(req)
+	if resp_err != nil {
+		return resp_err, ""
+	}
+
+	defer resp.Body.Close()
+
+	url_obj, loc_err := resp.Location()
+	if loc_err != nil {
+		return loc_err, ""
+	}
+
+	return nil, url_obj.String()
+}
+
 // Creates a redirect in the database table
 func CreateRedirect(slug string, url string, hits int) (error) {
 	// Insert it into the database
@@ -129,26 +151,13 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		} else {
-			req, err := http.NewRequest("GET", fmt.Sprintf(viper.GetString("fallback_url"), slug), nil)
+			// get the redirect location
+			err, url =  GetRedirectLocation(fmt.Sprintf(viper.GetString("fallback_url"), slug))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			resp, resp_err := http.DefaultTransport.RoundTrip(req)
-			if resp_err != nil {
-				http.Error(w, resp_err.Error(), http.StatusInternalServerError)
-				return
-			}
-
-			defer resp.Body.Close()
-
-			url_obj, loc_err := resp.Location()
-			if loc_err != nil {
-				http.Error(w, loc_err.Error(), http.StatusInternalServerError)
-				return
-			}
-			url = url_obj.String()
 			// Insert it into the database
 			err = CreateRedirect(slug, url, 0)
 			if err != nil {
