@@ -33,7 +33,7 @@ func main() {
 	// Instantiate the mux router
 	r := mux.NewRouter()
 	r.HandleFunc("/s", ShortenHandler).Queries("url", "")
-	r.HandleFunc("/{slug:[a-zA-Z0-9]+}", ShortenedUrlHandler)
+	r.HandleFunc("/{slug:_?[a-zA-Z0-9]+}", ShortenedUrlHandler)
 	r.HandleFunc("/", CatchAllHandler)
 
 	// Assign mux as the HTTP handler
