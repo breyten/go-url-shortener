@@ -5,6 +5,7 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"errors"
 	"fmt"
 	"log"
 	"math/rand"
@@ -81,13 +82,12 @@ func CreateRedirect(slug string, url string, hits int) (error) {
 }
 
 // Generates a slug for a given URL
-func GenerateSlug(url string, retry_count int) (string, error) {
+func GenerateSlug(url string) (string, error) {
 	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
 	var slug_length int
 
 	// set some defaults for the configuration
 	viper.SetDefault("slug_length", 6)
-	viper.SetDefault("slug_retries", 3)
 	viper.SetDefault("slug_prefix", "")
 
 	slug_length = viper.GetInt("slug_length")
@@ -98,7 +98,15 @@ func GenerateSlug(url string, retry_count int) (string, error) {
 		s[i] = chars[rand.Intn(len(chars))]
 	}
 
-	return viper.GetString("slug_prefix") + string(s), nil
+	slug := viper.GetString("slug_prefix") + string(s)
+	var old_url string
+	err := db.QueryRow("SELECT `url` FROM `redirect` WHERE `slug` = ?", slug).Scan(&old_url)
+
+	if err == nil {
+		return slug, errors.New("A slug was generated that already exists.")
+	} else {
+		return slug, nil
+	}
 }
 
 // Shortens a given URL passed through in the request.
@@ -129,7 +137,21 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// It doesn't exist! Generate a new slug for it
-	slug, err = GenerateSlug(url, 1)
+	// Generating a slug can result in collisions
+	// We can specify the maximum number of times we can generate a slug
+	// if it goes beyond that, just return a 500 error
+	viper.SetDefault("slug_retries", 3)
+	max_retries := viper.GetInt("slug_retries")
+	i := 0
+	for i < max_retries {
+		slug, err = GenerateSlug(url)
+		if err != nil {
+			i++
+		} else {
+			i = max_retries
+		}
+	}
+
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
