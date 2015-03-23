@@ -81,15 +81,24 @@ func CreateRedirect(slug string, url string, hits int) (error) {
 }
 
 // Generates a slug for a given URL
-func GenerateSlug(url string) (string, error) {
+func GenerateSlug(url string, retry_count int) (string, error) {
 	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
-	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyz")
-	s := make([]rune, 6)
+	var slug_length int
+
+	// set some defaults for the configuration
+	viper.SetDefault("slug_length", 6)
+	viper.SetDefault("slug_retries", 3)
+	viper.SetDefault("slug_prefix", "")
+
+	slug_length = viper.GetInt("slug_length")
+
+	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+	s := make([]rune, slug_length)
 	for i := range s {
 		s[i] = chars[rand.Intn(len(chars))]
 	}
 
-	return string(s), nil
+	return viper.GetString("slug_prefix") + string(s), nil
 }
 
 // Shortens a given URL passed through in the request.
@@ -120,7 +129,7 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// It doesn't exist! Generate a new slug for it
-	slug, err = GenerateSlug(url)
+	slug, err = GenerateSlug(url, 1)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
