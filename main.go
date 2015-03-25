@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
 	"github.com/speps/go-hashids"
-	"errors"
 	"fmt"
 	"log"
 	"time"
@@ -84,12 +83,19 @@ func CreateRedirect(slug string, url string, hits int) (error) {
 
 // Generates a slug for a given URL
 func GenerateSlug(url string) (string, error) {
+	// since time is actually int64 we need to take care of overflows
+	const MaxUint = ^uint(0)
+	const MinUint = 0
+	const MaxInt = int(MaxUint >> 1)
+	const MinInt = -MaxInt - 1
+
 	// Get the current time
 	var current_time = time.Now()
+	var ct_seconds = int(current_time.Unix() % int64(MaxInt))
 
 	// use the technique from http://hashids.org/ to generate a slug
 	h := hashids.New()
-	s, _ := h.Encode([]int{int(current_time.Unix())})
+	s, _ := h.Encode([]int{ct_seconds})
 
 	// slugs can be prefixed
 	viper.SetDefault("slug_prefix", "")
@@ -101,8 +107,10 @@ func GenerateSlug(url string) (string, error) {
 
 	// if there was an error it probably means the slug was already used
 	if err != nil {
-		// so generate a new one by uisng the unix time in nanoseconds
-		s, _ = h.Encode([]int{int(current_time.UnixNano())})
+		// so generate a new one by using the nano fraction of unix time
+		var ct_nano  = int((current_time.UnixNano()  - (current_time.Unix() * 1000)) % int64(MaxInt))
+
+		s, _ = h.Encode([]int{ct_seconds, ct_nano})
 		slug = slug_prefix + s
 
 		// now try to insert again
