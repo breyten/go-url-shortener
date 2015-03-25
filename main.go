@@ -95,7 +95,11 @@ func GenerateSlug(url string) (string, error) {
 
 	// use the technique from http://hashids.org/ to generate a slug
 	h := hashids.New()
-	s, _ := h.Encode([]int{ct_seconds})
+	s, err := h.Encode([]int{ct_seconds})
+
+	if err != nil {
+		return s, err
+	}
 
 	// slugs can be prefixed
 	viper.SetDefault("slug_prefix", "")
@@ -110,7 +114,11 @@ func GenerateSlug(url string) (string, error) {
 		// so generate a new one by using the nano fraction of unix time
 		var ct_nano  = int((current_time.UnixNano()  - (current_time.Unix() * 1000)) % int64(MaxInt))
 
-		s, _ = h.Encode([]int{ct_seconds, ct_nano})
+		s, err = h.Encode([]int{ct_seconds, ct_nano})
+		if err != nil {
+			return s, err
+		}
+
 		slug = slug_prefix + s
 
 		// now try to insert again

@@ -4,8 +4,6 @@
 	"mysql_database": "your_mysql_database",
 	"mysql_user": "your_mysql_user",
 	"mysql_password": "your_mysql_password",
-	"slug_length": 6,
-	"slug_retries": 3,
 	"slug_prefix": "",
 	"short_url": "http://short.ext",
 	"default_url": "http://long-domain-name.ext",
