@@ -107,7 +107,7 @@ func GenerateSlug(url string) (string, error) {
 	slug := slug_prefix + s
 
 	// now try to insert
-	err := CreateRedirect(slug, url, 0)
+	err = CreateRedirect(slug, url, 0)
 
 	// if there was an error it probably means the slug was already used
 	if err != nil {
