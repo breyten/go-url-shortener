@@ -2,14 +2,14 @@ package main
 
 import (
 	"database/sql"
+	"fmt"
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
-	"github.com/spf13/viper"
 	"github.com/speps/go-hashids"
-	"fmt"
+	"github.com/spf13/viper"
 	"log"
-	"time"
 	"net/http"
+	"time"
 )
 
 var db *sql.DB
@@ -70,7 +70,7 @@ func GetRedirectLocation(short_url string) (error, string) {
 }
 
 // Creates a redirect in the database table
-func CreateRedirect(slug string, url string, hits int) (error) {
+func CreateRedirect(slug string, url string, hits int) error {
 	// Insert it into the database
 	stmt, err := db.Prepare("INSERT INTO `redirect` (`slug`, `url`, `date`, `hits`) VALUES (?, ?, NOW(), ?)")
 	if err != nil {
@@ -112,7 +112,7 @@ func GenerateSlug(url string) (string, error) {
 	// if there was an error it probably means the slug was already used
 	if err != nil {
 		// so generate a new one by using the nano fraction of unix time
-		var ct_nano  = int((current_time.UnixNano()  - (current_time.Unix() * 1000)) % int64(MaxInt))
+		var ct_nano = int((current_time.UnixNano() - (current_time.Unix() * 1000)) % int64(MaxInt))
 
 		s, err = h.Encode([]int{ct_seconds, ct_nano})
 		if err != nil {
@@ -183,14 +183,14 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	err := db.QueryRow("SELECT `url` FROM `redirect` WHERE `slug` = ?", slug).Scan(&url)
 	if err != nil {
 		// 2a. Check for a fallback url. This is a string for formatting
-    //     This can be something like: http://bit.ly/%s
+		//     This can be something like: http://bit.ly/%s
 		//     But if there is no fallback we will return a not found error
 		if !viper.IsSet("fallback_url") {
 			http.NotFound(w, r)
 			return
 		} else {
 			// get the redirect location
-			err, url =  GetRedirectLocation(fmt.Sprintf(viper.GetString("fallback_url"), slug))
+			err, url = GetRedirectLocation(fmt.Sprintf(viper.GetString("fallback_url"), slug))
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
@@ -202,7 +202,7 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
-    }
+		}
 	}
 
 	// 3. If the slug (and thus the URL) exist, update the hit counter
