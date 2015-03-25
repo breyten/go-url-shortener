@@ -44,6 +44,8 @@ func main() {
 		http_address = ":8080" // this is the default address
 	}
 
+	log.SetFlags(log.LstdFlags)
+	log.Printf("Running on %v", http_address)
 	http.ListenAndServe(http_address, nil)
 }
 
@@ -135,12 +137,14 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if the url parameter has been sent along (and is not empty)
 	url := r.URL.Query().Get("url")
 	if url == "" {
+		log.Printf("ERROR: Bad request, url not included.")
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
 
 	// Get the short URL out of the config
 	if !viper.IsSet("short_url") {
+		log.Printf("ERROR: short url not set")
 		http.Error(w, "", http.StatusInternalServerError)
 		return
 	}
@@ -150,6 +154,7 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	var slug string
 	err := db.QueryRow("SELECT `slug` FROM `redirect` WHERE `url` = ?", url).Scan(&slug)
 	if err == nil {
+		log.Printf("/%v -> %v", slug, url)
 		// The URL already exists! Return the shortened URL.
 		w.Write([]byte(short_url + "/" + slug))
 		return
@@ -159,10 +164,12 @@ func ShortenHandler(w http.ResponseWriter, r *http.Request) {
 	slug, err = GenerateSlug(url)
 
 	if err != nil {
+		log.Printf("ERROR: %v", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
+	log.Printf("/%v created", slug)
 	w.WriteHeader(http.StatusCreated)
 	w.Write([]byte(short_url + "/" + slug))
 }
@@ -174,6 +181,7 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	slug, ok := vars["slug"]
 	if !ok {
+		log.Printf("ERROR: Bad request")
 		http.Error(w, "", http.StatusBadRequest)
 		return
 	}
@@ -186,12 +194,14 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 		//     This can be something like: http://bit.ly/%s
 		//     But if there is no fallback we will return a not found error
 		if !viper.IsSet("fallback_url") {
+			log.Printf("WARN: /%v not found", slug)
 			http.NotFound(w, r)
 			return
 		} else {
 			// get the redirect location
 			err, url = GetRedirectLocation(fmt.Sprintf(viper.GetString("fallback_url"), slug))
 			if err != nil {
+				log.Printf("ERROR: %v", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
 			}
@@ -199,8 +209,11 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 			// Insert it into the database
 			err = CreateRedirect(slug, url, 0)
 			if err != nil {
+				log.Printf("ERROR: %v", err.Error())
 				http.Error(w, err.Error(), http.StatusInternalServerError)
 				return
+			} else {
+				log.Printf("/%v created", slug)
 			}
 		}
 	}
@@ -208,33 +221,40 @@ func ShortenedUrlHandler(w http.ResponseWriter, r *http.Request) {
 	// 3. If the slug (and thus the URL) exist, update the hit counter
 	stmt, err := db.Prepare("UPDATE `redirect` SET `hits` = `hits` + 1 WHERE `slug` = ?")
 	if err != nil {
+		log.Printf("ERROR: %v", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	_, err = stmt.Exec(slug)
 	if err != nil {
+		log.Printf("ERROR: %v", err.Error())
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
 
 	// 4. Finally, redirect the user to the URL
+	log.Printf("%v -> %v", r.URL, url)
 	http.Redirect(w, r, url, http.StatusMovedPermanently)
 }
 
 // Catches all other requests to the short URL domain.
 // If a default URL exists in the config redirect to it.
 func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
+
 	// 1. Get the redirect URL out of the config
 	if !viper.IsSet("default_url") {
 		// The reason for using StatusNotFound here instead of StatusInternalServerError
 		// is because this is a catch-all function. You could come here via various
 		// ways, so showing a StatusNotFound is friendlier than saying there's an
 		// error (i.e. the configuration is missing)
+		log.Printf("WARN: Catch all requested but default_url not set")
 		http.NotFound(w, r)
 		return
 	}
 
 	// 2. If it exists, redirect the user to it
-	http.Redirect(w, r, viper.GetString("default_url"), http.StatusMovedPermanently)
+  default_url := viper.GetString("default_url")
+	log.Printf("%v -> %v", r.URL, default_url)
+	http.Redirect(w, r, default_url, http.StatusMovedPermanently)
 }
