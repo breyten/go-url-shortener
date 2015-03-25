@@ -254,7 +254,7 @@ func CatchAllHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// 2. If it exists, redirect the user to it
-  default_url := viper.GetString("default_url")
+	default_url := viper.GetString("default_url")
 	log.Printf("%v -> %v", r.URL, default_url)
 	http.Redirect(w, r, default_url, http.StatusMovedPermanently)
 }
