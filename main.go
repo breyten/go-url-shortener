@@ -5,10 +5,11 @@ import (
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/gorilla/mux"
 	"github.com/spf13/viper"
+	"github.com/speps/go-hashids"
 	"errors"
 	"fmt"
 	"log"
-	"math/rand"
+	"time"
 	"net/http"
 )
 
@@ -83,22 +84,15 @@ func CreateRedirect(slug string, url string, hits int) (error) {
 
 // Generates a slug for a given URL
 func GenerateSlug(url string) (string, error) {
-	// From: http://stackoverflow.com/questions/22892120/how-to-generate-a-random-string-of-a-fixed-length-in-golang
-	var slug_length int
+	var current_time = time.Now()
 
-	// set some defaults for the configuration
-	viper.SetDefault("slug_length", 6)
+	h := hashids.New()
+	s, _ := h.Encode([]int{int(current_time.Unix())})
+
 	viper.SetDefault("slug_prefix", "")
 
-	slug_length = viper.GetInt("slug_length")
+	slug := viper.GetString("slug_prefix") + s
 
-	var chars = []rune("0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
-	s := make([]rune, slug_length)
-	for i := range s {
-		s[i] = chars[rand.Intn(len(chars))]
-	}
-
-	slug := viper.GetString("slug_prefix") + string(s)
 	var old_url string
 	err := db.QueryRow("SELECT `url` FROM `redirect` WHERE `slug` = ?", slug).Scan(&old_url)
 
