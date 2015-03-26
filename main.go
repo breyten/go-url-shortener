@@ -114,7 +114,7 @@ func GenerateSlug(url string) (string, error) {
 	// if there was an error it probably means the slug was already used
 	if err != nil {
 		// so generate a new one by using the nano fraction of unix time
-		var ct_nano = int((current_time.UnixNano() - (current_time.Unix() * 1000)) % int64(MaxInt))
+		var ct_nano = int((current_time.UnixNano() - (current_time.Unix() * 1000000000)) % int64(MaxInt))
 
 		s, err = h.Encode([]int{ct_seconds, ct_nano})
 		if err != nil {
