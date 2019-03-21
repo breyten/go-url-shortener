@@ -1,0 +1,35 @@
+version: '3.1'
+
+services:
+  web:
+    restart: always
+    image: go-url-shortener
+    ports:
+      - 8080:8080
+    networks:
+      - gus
+    # environment:
+    #   - "DB_PORT=3306"
+    #   - "DB_HOST=mysql"
+    #   - "DB_NAME=go-mysql-crud"
+    #   - "DB_PASS=12345"
+
+  mysql:
+    image: mysql:5.7.21
+    # This root password will be overwritten with the password used in
+    # the backup that will be restored from a .sql file in the
+    # docker-entrypoint-initdb.d directory.
+    environment:
+      - MYSQL_DATABASE=go-url-shortener
+      - MYSQL_ROOT_PASSWORD=test
+    networks:
+      - gus
+    volumes:
+      - gus-mysql-volume:/var/lib/mysql
+      - "./docker-entrypoint-initdb.d:/docker-entrypoint-initdb.d"
+    restart: always
+networks:
+  gus:
+volumes:
+  gus-mysql-volume:
+    driver: local
