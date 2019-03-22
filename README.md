@@ -6,26 +6,20 @@ Inspired by Mathias Bynens' [PHP URL Shortener](https://github.com/mathiasbynens
 * Redirect to your main website when no slug, or incorrect slug, is entered, e.g. `http://wiere.ma/` → `http://samwierema.nl/`.
 * Generates short URLs using only `[a-z0-9]` characters.
 * Doesn’t create multiple short URLs when you try to shorten the same URL. In this case, the script will simply return the existing short URL for that long URL.
+* Can import old bitly links
 
 ## Installation
-1. Download the source code and build it using the `go build` command.
-2. Use `database.sql` to create the `redirect` table in a database of choice.
-3. Create a config file in `$HOME/.go-url-shortener/` named `config.(json|yaml|toml)`. Use `config-example.json` as a example.
-4. Run the program as a daemon using one of the many methods: write a script for [upstart](https://launchpad.net/upstart), init.d, use [daemonize](http://software.clapper.org/daemonize/), [Supervisord](http://supervisord.org/), [Circus](http://circus.readthedocs.org/) or just plain old `nohup`. You can even start (and manage) it in a `screen` session.
-5. Adding the following configuration to Apache (make sure you've got [mod_proxy](http://httpd.apache.org/docs/2.2/mod/mod_proxy.html) enabled):
-```
-<VirtualHost *:80>
-	ServerName your-short-domain.ext
-
-	ProxyPreserveHost on
-	ProxyPass / http://localhost:8080/
-	ProxyPassReverse / http://localhost:8080/
-</VirtualHost>
-```
+1. `git clone git@github.com:breyten/go-url-shortener.git`
+2. `cd go-url-shortener/docker`
+3. Create a config file named `config.(json|yaml|toml)`. Use `config-example.json` as a example.
+4. `./run.sh`
+5. `docker-compose up -d`
+6. Forward requests from your load balancer to the `gus_web_1` container (port 8080)
 
 ## To-do
 * Add tests
 * Add checks for duplicate slugs (i.e. make creation of slugs better)
 
 ## Author
+* [Breyten Ernsting](http://yerb.net/)
 * [Sam Wierema](http://wiere.ma)
