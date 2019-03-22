@@ -42,13 +42,12 @@ func main() {
 	http_address := viper.GetString("http_address")
 
 	log.SetFlags(log.LstdFlags)
-	log.Printf("Should run on %v", http_address)
+	// log.Printf("Should run on %v", http_address)
 
 	if http_address == "" {
 		http_address = ":8080" // this is the default address
 	}
 
-	//log.SetFlags(log.LstdFlags)
 	log.Printf("Running on %v", http_address)
 	http.ListenAndServe(http_address, nil)
 }
